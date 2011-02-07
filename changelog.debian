@@ -1,0 +1,41 @@
+proxydriver (1.43) unstable; urgency=low
+
+  * Bug fixed: /dev/null bad directory name
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Mon, 7 Feb 2011 18:00:00 +0100
+
+proxydriver (1.42) unstable; urgency=low
+
+  * Cnetworkmanager is replaced with nmcli
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Sun, 4 Jul 2010 20:00:00 +0200
+
+proxydriver (1.41) unstable; urgency=low
+
+  * Use dbus-uuidgen to retrieve DBUS id
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Mon, 14 Jun 2010 20:00:00 +0200
+
+proxydriver (1.40) unstable; urgency=low
+
+  * Identification of network now based on Network Manager's profiles
+  * Proxydriver supports VPN
+  * Cnetworkmanager is needed
+  * DISPLAY variable exporting bug fixed
+  * Package versioning changed to be similar to script's version
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Mon, 7 Jun 2010 11:00:00 +0200
+
+proxydriver (0.4) unstable; urgency=low
+
+  * DBUS variable exporting bug fixed
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Thu, 6 May 2010 13:00:00 +0200
+
+proxydriver (0.3) unstable; urgency=low
+
+  * Added support of other proxy settings than socks server
+  * First .deb package
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Sat, 19 Dec 2009 21:30:00 +0100
+

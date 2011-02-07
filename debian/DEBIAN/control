@@ -1,0 +1,13 @@
+Package: proxydriver
+Version: 1.43
+Section: gnome
+Priority: optional
+Architecture: all
+Depends: network-manager
+Installed-Size: 5120
+Maintainer: Julien Blitte <julien.blitte@gmail.com>
+Description: sets GNOME proxy settings using wifi NetworkManager profile name
+ Proxydriver is little application wich handles GNOME proxy settings using
+ Network Manager's data.
+ Each wifi connection triggers a reconfiguration of GNOME proxy, based on
+ network profile name.

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+src='/usr/share/doc/proxydriver/proxydriver.sh'
+dst='/etc/NetworkManager/dispatcher.d/99proxydriver.sh'
+
+install -m 755 -o 0 -g 0 "$src" "$dst"
+
