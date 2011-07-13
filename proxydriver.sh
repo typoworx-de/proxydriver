@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script will set gnome proxy configuration for each SSID
-# Version: 1.43
+# Version: 1.44
 #
 # Authors and contributors:
 # - Ivan Gusev
@@ -171,6 +171,47 @@ gconftool-2 --type list --list-type string --set /system/http_proxy/ignore_hosts
 
 # gconftool-2 --type string --set /system/proxy/autoconfig_url "$URL"
 EOS
+
+	# proxy settings for gnome 3
+	if type -P gsettings &>/dev/nul
+	then
+		# ignore-list uses somewhat different format
+		il=${ignorelist//","/"','"}
+		il=${il/"["/"['"}
+		il=${il/"]"/"']"}
+		cat <<EOS | su -l "$user"
+export \$(DISPLAY=':0.0' dbus-launch --autolaunch="$machineid")
+
+# active or not
+gsettings set org.gnome.system.proxy.http enabled "$enabled"
+gsettings set org.gnome.system.proxy mode "'$mode'"
+
+# proxy settings
+gsettings set org.gnome.system.proxy.http host "'$proxy'"
+gsettings set org.gnome.system.proxy.http port "$port"
+
+gsettings set org.gnome.system.proxy use-same-proxy "$same"
+
+gsettings set org.gnome.system.proxy.https host "'$https_proxy'"
+gsettings set org.gnome.system.proxy.https port "$https_port"
+
+gsettings set org.gnome.system.proxy.ftp host "'$ftp_proxy'"
+gsettings set org.gnome.system.proxy.ftp port "$ftp_port"
+
+gsettings set org.gnome.system.proxy.socks host "'$socks_proxy'"
+gsettings set org.gnome.system.proxy.socks port "$socks_port"
+
+# authentification
+gsettings set org.gnome.system.proxy.http use-authentication "$auth"
+gsettings set org.gnome.system.proxy.http authentication-user "'$login'"
+gsettings set org.gnome.system.proxy.http authentication-password "'$pass'"
+
+# ignore-list
+gsettings set org.gnome.system.proxy ignore-hosts "$il"
+
+# gsettings set org.gnome.system.proxy autoconfig-url "'$URL'"
+EOS
+	fi
 	done
 
 	logger -p user.notice -t $log_tag "configuration done."
