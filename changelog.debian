@@ -1,3 +1,10 @@
+proxydriver (1.50) unstable; urgency=low
+
+  * Gnome 3 support enhanced
+  * KDE support added
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Mon, 13 Jul 2011 13:30:00 +0200
+
 proxydriver (1.44) unstable; urgency=low
 
   * Gnome 3 support added
