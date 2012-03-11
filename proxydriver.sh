@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script will set gnome proxy configuration for each SSID
-# Version: 1.50
+# Version: 1.51
 #
 # Authors and contributors:
 # - Berend Deschouwer
@@ -24,6 +24,18 @@
 
 conf_dir='/etc/proxydriver.d'
 log_tag='proxydriver'
+running_device='/var/run/proxydriver.device'
+
+logger -p user.debug -t $log_tag "script called: $*"
+
+# vpn disconnection handling
+if [ "$2" == "up" ]
+then
+	echo "$1" > "$running_device"
+elif [ "$2" == "vpn-down" ]
+then
+	set -- `cat "$running_device"` "up"
+fi
 
 if [ "$2" == "up" -o "$2" == "vpn-up" ]
 then
