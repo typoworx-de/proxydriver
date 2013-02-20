@@ -1,3 +1,13 @@
+proxydriver (1.60) unstable; urgency=low
+
+  * VPN disconnection bug fixed
+  * URL autoconfiguration
+  * Shell environment variables set
+  * Bug fixed: empty network name
+  * Timer to wait user to connect enabled by default
+
+ -- Julien Blitte <julien.blitte@gmail.com>  Wed, 20 Feb 2013 06:30:00 +0100
+
 proxydriver (1.51) unstable; urgency=low
 
   * VPN disconnection bug fixed

@@ -4,6 +4,8 @@ set -e
 
 script='/etc/NetworkManager/dispatcher.d/99proxydriver.sh'
 conf_dir='/etc/proxydriver.d'
+bashrc='/etc/bash.bashrc'
+proxy_env='/var/lib/proxydriver/environment.sh'
 
 rm "$script"
 
@@ -11,4 +13,12 @@ if [ "$1" = "purge" ]
 then
 	rm -r "$conf_dir"
 fi
+
+new_bash=mktemp
+grep -v 'proxydriver' "$bashrc" > "$new_bash"
+install -m 644 -o 0 -g 0 "$new_bash" "$bashrc"
+rm "$new_bash"
+
+rm "$proxy_env"
+rmdir "$(dirname $proxy_env)"
 

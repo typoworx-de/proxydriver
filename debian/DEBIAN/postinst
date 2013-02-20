@@ -4,6 +4,13 @@ set -e
 
 src='/usr/share/doc/proxydriver/proxydriver.sh'
 dst='/etc/NetworkManager/dispatcher.d/99proxydriver.sh'
+bashrc='/etc/bash.bashrc'
+proxy_env='/var/lib/proxydriver/environment.sh'
 
 install -m 755 -o 0 -g 0 "$src" "$dst"
 
+new_bash=mktemp
+grep -v 'proxydriver' "$bashrc" > "$new_bash"
+echo "[ -f \"$proxy_env\" ] && . \"$proxy_env\"" >> "$new_bash"
+install -m 644 -o 0 -g 0 "$new_bash" "$bashrc"
+rm "$new_bash"
