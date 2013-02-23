@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script will set gnome/KDE/shell proxy configuration for each SSID
-# Version: 1.60
+# Version: 1.61
 #
 # Current script maintainer:
 # - Julien Blitte            <julien.blitte at gmail.com>
@@ -233,7 +233,7 @@ gconftool-2 --type string --set /system/proxy/socks_host "$socks_proxy"
 gsettings set org.gnome.system.proxy.socks host '"$socks_proxy"'
 gconftool-2 --type int --set /system/proxy/socks_port "$socks_port"
 gsettings set org.gnome.system.proxy.socks port "$socks_port"
-# KDE no socks proxy?
+kwriteconfig --file kioslaverc --group 'Proxy Settings' --key socksProxy "http://${socks_proxy}:${socks_port}/"
 
 # authentication
 gconftool-2 --type bool --set /system/http_proxy/use_authentication "$auth"
