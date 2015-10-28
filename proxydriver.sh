@@ -1,20 +1,24 @@
 #!/bin/bash
 
 # This script will set gnome/KDE/shell proxy configuration for each SSID
-# Version: 1.61
+# Version: 1.62
 #
 # Current script maintainer:
 # - Julien Blitte            <julien.blitte at gmail.com>
 #
-# Authors and contributors:
+# Authors and main contributors:
 # - Berend Deschouwer        <berend.deschouwer at ucs-software.co.za>
+# - Emerson Esteves          <ensss at users.sourceforge.net>
 # - Ivan Gusev               <ivgergus at gmail.com>
 # - Jean-Baptiste Masurel    <jbmasurel at gmail.com>
 # - Julien Blitte            <julien.blitte at gmail.com>
 # - Milos Pejovic            <pejovic at gmail.com>
 # - Sergiy S. Kolesnikov     <kolesnik at fim.uni-passau.de>
+# - Taylor Braun-Jones       <taylor@braun-jones.org>
 # - Tom Herrmann             <mail at herrmann-tom.de>
 # - Ulrik Stervbo            <ulrik.stervbo at gmail.com>
+# - etc.
+
 #
 # To install this file, place it in directory (with +x mod):
 # /etc/NetworkManager/dispatcher.d
@@ -26,7 +30,7 @@
 conf_dir='/etc/proxydriver.d'
 log_tag='proxydriver'
 running_device='/var/run/proxydriver.device'
-proxy_env='/var/lib/proxydriver/environment.sh'
+proxy_env='/etc/environment'
 
 logger -p user.debug -t $log_tag "script called: $*"
 
@@ -45,20 +49,51 @@ then
 
 	[ -d "$conf_dir" ] || mkdir --parents "$conf_dir"
 	
-	if type -P nmcli &>/dev/null
+	# Get the nmcli 'protocol'
+	nmcli_protocol='undetected'
+	if ! type -P nmcli &>/dev/null
 	then
-		# retrieve connection/vpn name
-		networkID=`nmcli -t -f name,devices,vpn con status | \
-			awk -F':' "BEGIN { device=\"$1\"; event=\"$2\" } \
-				event == \"up\" && \\$2 == device && \\$3 == \"no\" { print \\$1 } \
-				event == \"vpn-up\" && \\$3 == \"yes\" { print \"vpn_\" \\$1 }"`
+		# nmcli seems not installed or runnable
+		mcli_protocol=0
+	elif nmcli con status &> /dev/null
+	then
+		# probably nmcli prior to 0.9.10.0
+		nmcli_protocol=1
+	elif nmcli con show &> /dev/null
+	then
+		# probably nmcli 0.9.10.0 or higher
+		nmcli_protocol=2
 	else
+		#nmcli is installed but I do not know how to communicate with it
+		logger -p user.notice -t $log_tag "I don't understand nmcli version `nmcli --version` language"
+		nmcli_protocol=-1
+	fi
+	logger -p user.notice -t $log_tag "nmcli protocol: $nmcli_protocol"
+
+	case $nmcli_protocol in
+	0)
 		# try ESSID if nmcli is not installed
 		logger -p user.notice -t $log_tag "nmcli not detected, will use essid"
 
 		networkID=`iwgetid --scheme`
 		[ $? -ne 0 ] && networkID='default'
-	fi
+	;;
+	1)
+		# retrieve connection/vpn name
+		networkID=`nmcli -t -f name,devices,vpn con status | \
+			awk -F':' "BEGIN { device=\"$1\"; event=\"$2\" } \
+			event == \"up\" && \\$2 == device && \\$3 == \"no\" { print \\$1 } \
+			event == \"vpn-up\" && \\$3 == \"yes\" { print \"vpn_\" \\$1 }"`
+	;;
+	2)
+		# retrieve connection/vpn name
+		# It appears a line with tun0:tun0:generic is created when I connect to VPN. No idea how to get rid of it
+		networkID=`nmcli -t -f name,device,type con show --active | \
+			awk -F':' "BEGIN { device=\"$1\"; event=\"$2\" } \
+			event == \"up\" && \\$2 == device && \\$3 != \"vpn\" { print \\$1 } \
+			event == \"vpn-up\" && \\$3 == \"vpn\" { print \"vpn_\" \\$1 }"`
+	;;
+	esac
 	
 	# we did not get solve network name
 	[ -z "$networkID" ] && networkID='default'
@@ -79,6 +114,10 @@ then
 		cat <<EOF > "$conf"
 # configuration file for proxydriver
 # file auto-generated, please complete me!
+
+# ignore completly connection to this network
+# (configuration from previous connection is preserved)
+#skip='true'
 
 # proxy active or not
 enabled='false'
@@ -122,6 +161,12 @@ EOF
 
 	# read configfile
 	source "$conf"
+
+	if [ "$skip" == 'true' -o "$skip" == '1' -o "$skip" == 'yes' ]
+	then
+		logger -p user.notice -t $log_tag "this configuration will be ignored."
+		exit
+	fi
 
 	# select mode using enabled value
 	if [ "$enabled" == 'true' -o "$enabled" == '1' -o "$enabled" == 'yes' ]
@@ -176,7 +221,25 @@ EOF
 	
 	# Gnome likes *.example.com; kde likes .example.com:
 	kde_ignorelist=`echo "${ignorelist}" | sed -e 's/\*\./\./g'`
-	
+
+	# setup system environment variables
+	logger -p user.notice -t $log_tag "update system variable environment configuration file"
+	sed -i '/^\(https\?_proxy\|HTTPS\?_PROXY\|ftp_proxy\|FTP_PROXY\|all_proxy\|ALL_PROXY\|no_proxy\|NO_PROXY\)=/d' "$proxy_env"
+
+	if [ "$enabled" == 'true' -a -z "$autoconfig_url" ]
+	then
+		echo "http_proxy='http://${shell_auth}${proxy}:${port}/'" >> "$proxy_env"
+		echo "HTTP_PROXY='http://${shell_auth}${proxy}:${port}/'" >> "$proxy_env"
+		echo "https_proxy='http://${shell_auth}${https_proxy}:${https_port}/'" >> "$proxy_env"
+		echo "HTTPS_PROXY='http://${shell_auth}${https_proxy}:${https_port}/'" >> "$proxy_env"
+		echo "ftp_proxy='http://${shell_auth}${ftp_proxy}:${ftp_port}/'" >> "$proxy_env"
+		echo "FTP_PROXY='http://${shell_auth}${ftp_proxy}:${ftp_port}/'" >> "$proxy_env"
+		echo "all_proxy='socks://${shell_auth}${socks_proxy}:${socks_port}/'" >> "$proxy_env"
+		echo "ALL_PROXY='socks://${shell_auth}${socks_proxy}:${socks_port}/'" >> "$proxy_env"
+	 	echo "no_proxy='${ignorelist}'" >> "$proxy_env"
+	 	echo "NO_PROXY='${ignorelist}'" >> "$proxy_env"
+	fi
+
 	# wait if no users are logged in (up to 5 minutes)
 	connect_timer=0
 	while [ -z "$(users)" -a $connect_timer -lt 300 ]
@@ -211,7 +274,7 @@ gconftool-2 --type string --set /system/http_proxy/host "$proxy"
 gsettings set org.gnome.system.proxy.http host '"$proxy"'
 gconftool-2 --type int --set /system/http_proxy/port "$port"
 gsettings set org.gnome.system.proxy.http port "$port"
-kwriteconfig --file kioslaverc --group 'Proxy Settings' --key httpProxy "http://${proxy}:${port}/"
+kwriteconfig --file kioslaverc --group 'Proxy Settings' --key httpProxy "http://${proxy} ${port}"
 
 gconftool-2 --type bool --set /system/http_proxy/use_same_proxy "$same"
 gsettings set org.gnome.system.proxy use-same-proxy "$same"
@@ -221,19 +284,19 @@ gconftool-2 --type string --set /system/proxy/secure_host "$https_proxy"
 gsettings set org.gnome.system.proxy.https host '"$https_proxy"'
 gconftool-2 --type int --set /system/proxy/secure_port "$https_port"
 gsettings set org.gnome.system.proxy.https port "$https_port"
-kwriteconfig --file kioslaverc --group 'Proxy Settings' --key httpsProxy "http://${https_proxy}:${https_port}/"
+kwriteconfig --file kioslaverc --group 'Proxy Settings' --key httpsProxy "http://${https_proxy} ${https_port}"
 
 gconftool-2 --type string --set /system/proxy/ftp_host "$ftp_proxy"
 gsettings set org.gnome.system.proxy.ftp host '"$ftp_proxy"'
 gconftool-2 --type int --set /system/proxy/ftp_port "$ftp_port"
 gsettings set org.gnome.system.proxy.ftp port "$ftp_port"
-kwriteconfig --file kioslaverc --group 'Proxy Settings' --key ftpProxy "ftp://${ftp_proxy}:${ftp_port}/"
+kwriteconfig --file kioslaverc --group 'Proxy Settings' --key ftpProxy "ftp://${ftp_proxy} ${ftp_port}"
 
 gconftool-2 --type string --set /system/proxy/socks_host "$socks_proxy"
 gsettings set org.gnome.system.proxy.socks host '"$socks_proxy"'
 gconftool-2 --type int --set /system/proxy/socks_port "$socks_port"
 gsettings set org.gnome.system.proxy.socks port "$socks_port"
-kwriteconfig --file kioslaverc --group 'Proxy Settings' --key socksProxy "http://${socks_proxy}:${socks_port}/"
+kwriteconfig --file kioslaverc --group 'Proxy Settings' --key socksProxy "http://${socks_proxy} ${socks_port}"
 
 # authentication
 gconftool-2 --type bool --set /system/http_proxy/use_authentication "$auth"
@@ -259,31 +322,5 @@ dbus-send --type=signal /KIO/Scheduler org.kde.KIO.Scheduler.reparseSlaveConfigu
 EOS
 	done
 
-	# setup shell variables
-	# this script should be called from /etc/bash.bashrc
-	logger -p user.notice -t $log_tag "building configuration script for shell"
-
-	[ -d `dirname "$proxy_env"` ] || mkdir --parents `dirname "$proxy_env"`
-	echo "# shell proxy configuration script for '$networkID'" > "$proxy_env"
-
-	# delete current values
-	echo 'unset http_proxy HTTP_PROXY https_proxy HTTPS_PROXY ftp_proxy FTP_PROXY all_proxy ALL_PROXY no_proxy NO_PROXY' >> "$proxy_env"
-
-	if [ "$enabled" == 'true' -a -z "$autoconfig_url" ]
-	then
-		echo "export http_proxy='http://${shell_auth}${proxy}:${port}/'" >> "$proxy_env"
-		echo "export HTTP_PROXY='http://${shell_auth}${proxy}:${port}/'" >> "$proxy_env"
-		echo "export https_proxy='http://${shell_auth}${https_proxy}:${https_port}/'" >> "$proxy_env"
-		echo "export HTTPS_PROXY='http://${shell_auth}${https_proxy}:${https_port}/'" >> "$proxy_env"
-		echo "export ftp_proxy='http://${shell_auth}${ftp_proxy}:${ftp_port}/'" >> "$proxy_env"
-		echo "export FTP_PROXY='http://${shell_auth}${ftp_proxy}:${ftp_port}/'" >> "$proxy_env"
-		echo "export all_proxy='socks://${shell_auth}${socks_proxy}:${socks_port}/'" >> "$proxy_env"
-		echo "export ALL_PROXY='socks://${shell_auth}${socks_proxy}:${socks_port}/'" >> "$proxy_env"
-	 	echo "export no_proxy='${ignorelist}'" >> "$proxy_env"
-	 	echo "export NO_PROXY='${ignorelist}'" >> "$proxy_env"
-
-	fi
-
 	logger -p user.notice -t $log_tag "configuration done."
 fi
-
