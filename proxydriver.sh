@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script will set gnome/KDE/shell proxy configuration for each SSID
-# Version: 1.62
+# Version: TESTING OTO 1.62 2020-01-05
 #
 # Current script maintainer:
 # - Julien Blitte            <julien.blitte at gmail.com>
@@ -14,7 +14,7 @@
 # - Julien Blitte            <julien.blitte at gmail.com>
 # - Milos Pejovic            <pejovic at gmail.com>
 # - Sergiy S. Kolesnikov     <kolesnik at fim.uni-passau.de>
-# - Taylor Braun-Jones       <taylor@braun-jones.org>
+# - Taylor Braun-Jones       <taylor at braun-jones.org>
 # - Tom Herrmann             <mail at herrmann-tom.de>
 # - Ulrik Stervbo            <ulrik.stervbo at gmail.com>
 # - etc.
@@ -23,7 +23,7 @@
 # To install this file, place it in directory (with +x mod):
 # /etc/NetworkManager/dispatcher.d
 #
-# For each new SSID, after a first connection, complete the genreated file
+# For each new SSID, after a first connection, complete the genereated file
 # /etc/proxydriver.d/<ssid_name>.conf and then re-connect to AP, proxy is now set!
 #
 
@@ -94,6 +94,10 @@ then
 			event == \"vpn-up\" && \\$3 == \"vpn\" { print \"vpn_\" \\$1 }"`
 	;;
 	esac
+	# working with: nmcli tool, version 1.4.2
+	# networkID=`nmcli -t -f active,ssid dev wifi | egrep '^yes' | cut -d':' -f2`
+	
+	logger -p user.notice -t $log_tag "network ID: '$networkID'"
 	
 	# we did not get solve network name
 	[ -z "$networkID" ] && networkID='default'
@@ -118,6 +122,9 @@ then
 # ignore completly connection to this network
 # (configuration from previous connection is preserved)
 #skip='true'
+
+# change proxy details only for environment
+only_env='false'
 
 # proxy active or not
 enabled='false'
@@ -160,6 +167,7 @@ EOF
 	fi
 
 	# read configfile
+	logger -p user.notice -t $log_tag "reading configuration file '$conf'"
 	source "$conf"
 
 	if [ "$skip" == 'true' -o "$skip" == '1' -o "$skip" == 'yes' ]
@@ -240,26 +248,28 @@ EOF
 	 	echo "NO_PROXY='${ignorelist}'" >> "$proxy_env"
 	fi
 
-	# wait if no users are logged in (up to 5 minutes)
-	connect_timer=0
-	while [ -z "$(users)" -a $connect_timer -lt 300 ]
-	do
-		let connect_timer=connect_timer+10
-		sleep 10
-	done
-	
-	# a user just logged in; give some time to settle things down
-	if [ $connect_timer -gt 0 -a $connect_timer -lt 300 ]
+	if [ "$only_env" == 'false' -o "$only_env" == '0' -o "$only_env" == 'no' ]
 	then
-		sleep 15
-	fi
+		# wait if no users are logged in (up to 5 minutes)
+		connect_timer=0
+		while [ -z "$(users)" -a $connect_timer -lt 300 ]
+		do
+			let connect_timer=connect_timer+10
+			sleep 10
+		done
+		
+		# a user just logged in; give some time to settle things down
+		if [ $connect_timer -gt 0 -a $connect_timer -lt 300 ]
+		then
+			sleep 15
+		fi
 
-	machineid=$(dbus-uuidgen --get)
-	for user in `users | tr ' ' '\n' | sort --unique`
-	do
-		logger -p user.notice -t $log_tag "setting configuration for '$user'"
+		machineid=$(dbus-uuidgen --get)
+		for user in `users | tr ' ' '\n' | sort --unique`
+		do
+			logger -p user.notice -t $log_tag "setting configuration for '$user'"
 
-		cat <<EOS | su -l "$user"
+			cat <<EOS | su -l "$user"
 export \$(DISPLAY=':0.0' dbus-launch --autolaunch="$machineid")
 
 # active or not
@@ -320,7 +330,8 @@ kwriteconfig --file kioslaverc --group 'Proxy Settings' --key 'Proxy Config Scri
 # When you modify kioslaverc, you need to tell KIO.
 dbus-send --type=signal /KIO/Scheduler org.kde.KIO.Scheduler.reparseSlaveConfiguration string:''
 EOS
-	done
+		done
+	fi
 
 	logger -p user.notice -t $log_tag "configuration done."
 fi
