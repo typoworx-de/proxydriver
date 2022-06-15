@@ -1,13 +1,10 @@
 #!/bin/bash
-
 set -e
 
-src='/usr/share/doc/proxydriver/proxydriver.sh'
-dst='/etc/NetworkManager/dispatcher.d/99proxydriver.sh'
 bashrc='/etc/bash.bashrc'
 proxy_env='/etc/environment'
 
-install -m 755 -o 0 -g 0 "$src" "$dst"
+install -m 755 -o 0 -g 0 /usr/lib/proxydriver/proxydriver.sh /etc/NetworkManager/dispatcher.d/99proxydriver.sh
 
 new_bash=mktemp
 
