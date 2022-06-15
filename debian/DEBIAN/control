@@ -7,7 +7,7 @@ Depends: network-manager
 Installed-Size: 10
 Maintainer: Julien Blitte <julien.blitte@gmail.com>
 Description: sets GNOME/KDE proxy settings using wifi NetworkManager profile name
- Proxydriver is little application wich handles GNOME or KDE proxy settings
+ Proxydriver is little application which handles GNOME or KDE proxy settings
  using Network Manager's data.
  Each wifi connection triggers a reconfiguration of GNOME or KDE proxy, based on
  network profile name.
