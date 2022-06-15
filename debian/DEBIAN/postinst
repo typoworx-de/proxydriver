@@ -5,6 +5,7 @@ bashrc='/etc/bash.bashrc'
 proxy_env='/etc/environment'
 
 install -m 755 -o 0 -g 0 /usr/lib/proxydriver/proxydriver.sh /etc/NetworkManager/dispatcher.d/99proxydriver.sh
+mkdir -p /etc/proxydriver.d
 
 new_bash=mktemp
 
